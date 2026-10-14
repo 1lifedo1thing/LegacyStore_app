@@ -1,0 +1,9 @@
+Package: nl.retroapps.store
+Name: RetroStore
+Version: 1.0
+Architecture: iphoneos-arm
+Description: Een App Store in iOS 6-stijl voor het LegacyStore-archief. Door Erik Hendriks, co-auteur Robin Timman.
+Maintainer: Erik Hendriks
+Author: Erik Hendriks
+Section: Utilities
+Depends: firmware (>= 6.0)

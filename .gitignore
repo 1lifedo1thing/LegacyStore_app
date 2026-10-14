@@ -1,0 +1,6 @@
+.theos/
+packages/
+.DS_Store
+tools/checkimports/checkimports
+tools/nettest/nettest
+__pycache__/
