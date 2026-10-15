@@ -71,6 +71,31 @@ jobs:
           set -euo pipefail
           python3 tools/patch_sdk_cfnetwork.py "$THEOS/sdks/iPhoneOS9.3.sdk"
 
+      - name: 补齐 SDK 里缺失的 liblaunch 桩
+        run: |
+          set -euo pipefail
+          tbd="$THEOS/sdks/iPhoneOS9.3.sdk/usr/lib/system/liblaunch.tbd"
+          if [ -f "$tbd" ]; then
+            echo "liblaunch.tbd 已存在"
+            exit 0
+          fi
+          # libSystem.tbd 再导出了 /usr/lib/system/liblaunch.dylib（私有库），但 theos 的
+          # 9.3 SDK 没有随附该文件，ld64 会以 "file not found ... for architecture armv7" 失败。
+          # 本工程不引用它的符号，放一个最小 tbd 让链接器能解析这条再导出即可。
+          cat > "$tbd" <<'TBD'
+          ---
+          archs:                 [ armv7, armv7s, arm64, i386, x86_64 ]
+          platform:              ios
+          install-name:          /usr/lib/system/liblaunch.dylib
+          current-version:       1
+          compatibility-version: 1
+          exports:
+            - archs:              [ armv7, armv7s, arm64, i386, x86_64 ]
+              symbols:            [ _launch_msg ]
+          ...
+          TBD
+          echo "已写入 $tbd"
+
       - name: 构建 deb 与 ipa
         run: |
           set -euo pipefail
