@@ -103,8 +103,10 @@ jobs:
           set -euo pipefail
           # GO_EASY_ON_ME=1 关掉 Theos 默认的 -Werror：工程是照 Apple clang 写的，
           # 这套预编译 Linux 工具链不认识 -Wno-deprecated-module-dot-map 这类旧选项。
+          # 两步都用 FINALPACKAGE=1：否则 make ipa 会另起一套 debug 配置重新编译，
+          # 而这份 9.3 SDK 的 tbd 里没有 _memset/_memcpy 这类 libc 符号（release 构建靠内联绕过了）。
           make package FINALPACKAGE=1 GO_EASY_ON_ME=1 ADDITIONAL_CFLAGS=-Wno-unknown-warning-option
-          make ipa GO_EASY_ON_ME=1 ADDITIONAL_CFLAGS=-Wno-unknown-warning-option
+          make ipa FINALPACKAGE=1 GO_EASY_ON_ME=1 ADDITIONAL_CFLAGS=-Wno-unknown-warning-option
           ls -l packages/
 
       - uses: actions/upload-artifact@v4
