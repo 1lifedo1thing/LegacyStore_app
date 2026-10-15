@@ -49,9 +49,9 @@ jobs:
           curl -sL https://github.com/L1ghtmann/llvm-project/releases/latest/download/iOSToolchain-x86_64.tar.xz \
             | tar -xJ -C "$THEOS/toolchain"
 
-          # Theos 自带的 SDK 下载器；本工程 TARGET 指定 9.3，必须装这一个
+          # Theos 自带的 SDK 下载器；参数要写 SDK 全名，本工程 TARGET 指定 9.3
           chmod +x "$THEOS/bin/install-sdk"
-          "$THEOS/bin/install-sdk" 9.3
+          "$THEOS/bin/install-sdk" iPhoneOS9.3
 
       - name: 准备 ldid（签名用，工具链未自带时下载）
         run: |
