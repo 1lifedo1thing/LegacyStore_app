@@ -74,8 +74,10 @@ jobs:
       - name: 构建 deb 与 ipa
         run: |
           set -euo pipefail
-          make package FINALPACKAGE=1
-          make ipa
+          # GO_EASY_ON_ME=1 关掉 Theos 默认的 -Werror：工程是照 Apple clang 写的，
+          # 这套预编译 Linux 工具链不认识 -Wno-deprecated-module-dot-map 这类旧选项。
+          make package FINALPACKAGE=1 GO_EASY_ON_ME=1 ADDITIONAL_CFLAGS=-Wno-unknown-warning-option
+          make ipa GO_EASY_ON_ME=1 ADDITIONAL_CFLAGS=-Wno-unknown-warning-option
           ls -l packages/
 
       - uses: actions/upload-artifact@v4
