@@ -1,0 +1,87 @@
+# 放到仓库的 .github/workflows/build.yml
+# 产出：packages/RetroStore-1.0.deb（越狱源用）和 packages/RetroStore-1.0.ipa（Payload 形式）
+name: Build RetroStore (deb + ipa)
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    # Theos 官方支持 Linux 构建 iOS 目标；不要用 macos runner（Xcode 14+ 已移除 armv7 支持）
+    runs-on: ubuntu-22.04
+
+    env:
+      THEOS: ${{ github.workspace }}/.ci/theos
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装构建依赖
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential fakeroot rsync curl perl zip git libxml2 \
+            ca-certificates xz-utils dpkg
+
+      - name: 缓存 Theos / 工具链 / SDK
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/.ci/theos
+          key: theos-ios9.3-${{ runner.os }}-v1
+
+      - name: 安装 Theos + 预编译 iOS 工具链 + iPhoneOS9.3 SDK
+        if: steps.cache.outputs.cache-hit != 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git clone --recursive --depth 1 https://github.com/theos/theos.git "$THEOS"
+
+          # 官方预编译 Linux 工具链（clang + ld64 + 相关 cctools）
+          mkdir -p "$THEOS/toolchain"
+          curl -sL https://github.com/L1ghtmann/llvm-project/releases/latest/download/iOSToolchain-x86_64.tar.xz \
+            | tar -xJ -C "$THEOS/toolchain"
+
+          # Theos 自带的 SDK 下载器；本工程 TARGET 指定 9.3，必须装这一个
+          chmod +x "$THEOS/bin/install-sdk"
+          "$THEOS/bin/install-sdk" 9.3
+
+      - name: 准备 ldid（签名用，工具链未自带时下载）
+        run: |
+          set -euo pipefail
+          if [ -x "$THEOS/toolchain/linux/iphone/bin/ldid" ] || command -v ldid >/dev/null; then
+            echo "ldid 已可用"
+          else
+            sudo curl -sL -o /usr/local/bin/ldid \
+              https://github.com/ProcursusTeam/ldid/releases/download/v2.1.5-procursus7/ldid_linux_x86_64
+            sudo chmod +x /usr/local/bin/ldid
+          fi
+          echo "$THEOS/toolchain/linux/iphone/bin" >> "$GITHUB_PATH"
+          echo "$THEOS/bin" >> "$GITHUB_PATH"
+
+      - name: 给 SDK 打符号归属补丁
+        run: |
+          set -euo pipefail
+          python3 tools/patch_sdk_cfnetwork.py "$THEOS/sdks/iPhoneOS9.3.sdk"
+
+      - name: 构建 deb 与 ipa
+        run: |
+          set -euo pipefail
+          make package FINALPACKAGE=1
+          make ipa
+          ls -l packages/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RetroStore-1.0
+          if-no-files-found: error
+          path: |
+            packages/*.deb
+            packages/*.ipa
