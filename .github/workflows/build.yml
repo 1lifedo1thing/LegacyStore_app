@@ -27,7 +27,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             build-essential fakeroot rsync curl perl zip git libxml2 \
-            ca-certificates xz-utils dpkg
+            ca-certificates xz-utils dpkg libplist-utils
 
       - name: 缓存 Theos / 工具链 / SDK
         id: cache
@@ -63,8 +63,10 @@ jobs:
               https://github.com/ProcursusTeam/ldid/releases/download/v2.1.5-procursus7/ldid_linux_x86_64
             sudo chmod +x /usr/local/bin/ldid
           fi
-          echo "$THEOS/toolchain/linux/iphone/bin" >> "$GITHUB_PATH"
           echo "$THEOS/bin" >> "$GITHUB_PATH"
+          # 注意：不要把工具链的 bin 加进 PATH。Theos 会自己按路径找工具链，
+          # 而工具链里那份 plistutil 依赖 runner 上不存在的 libplist-2.0.so.4。
+          command -v plistutil && plistutil --version || true
 
       - name: 给 SDK 打符号归属补丁
         run: |
